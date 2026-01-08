@@ -3,78 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Nexus - My Personal Vlog</title>
+    <title>Nexus Blog | Future of Writing</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { margin: 0; background: #050505; color: #fff; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.6; }
+        .vlog-link { transition: all 0.3s ease; border-bottom: 1px solid #1e293b; }
+        .vlog-link:hover { background: rgba(255,255,255,0.03); border-color: #3b82f6; }
         
-        body { margin: 0; background: #020617; color: white; overflow-x: hidden; font-family: 'Space Grotesk', sans-serif; }
-        #canvas-bg { position: fixed; top: 0; left: 0; z-index: -1; }
-        
-        .glass-card { 
-            background: rgba(255, 255, 255, 0.02); 
-            backdrop-filter: blur(15px); 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            border-radius: 20px; 
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .glass-card:hover { 
-            border-color: #3b82f6; 
-            transform: scale(1.02); 
-            background: rgba(59, 130, 246, 0.05);
-        }
-
-        /* Telegraph Style Editor */
-        #editor-modal {
+        /* Smooth Custom Confirm Modal */
+        #custom-confirm {
             display: none;
-            position: fixed;
-            inset: 0;
-            background: #020617;
-            z-index: 100;
-            padding: 2rem;
-            overflow-y: auto;
-        }
-        .editor-input {
-            background: transparent;
-            border: none;
-            outline: none;
-            width: 100%;
-            color: white;
-        }
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body>
 
-    <canvas id="canvas-bg"></canvas>
+    <canvas id="bg-canvas"></canvas>
 
-    <nav class="max-w-6xl mx-auto p-8 flex justify-between items-center relative z-10">
-        <h1 class="text-4xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
-            VLOG.IO
-        </h1>
-        <button onclick="openEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
-            + NEW BLOG
-        </button>
-    </nav>
+    <div id="home-page" class="max-w-4xl mx-auto min-h-screen p-8">
+        <header class="flex justify-between items-center py-12">
+            <h1 class="text-3xl font-extrabold tracking-tighter text-blue-500 uppercase">Nexus Feed</h1>
+            <button onclick="openEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold transition">+ New</button>
+        </header>
 
-    <main class="max-w-4xl mx-auto p-6 relative z-10" id="blog-feed">
-        <div class="text-center text-gray-500 mt-20">Loading your stories...</div>
-    </main>
-
-    <div id="editor-modal">
-        <div class="max-w-3xl mx-auto mt-10">
-            <div class="flex justify-between items-center mb-16">
-                <button onclick="closeEditor()" class="text-gray-500 hover:text-white text-lg font-medium">✕ CANCEL</button>
-                <button onclick="publishBlog()" class="bg-blue-600 px-10 py-3 rounded-full font-bold hover:scale-105 transition-transform">PUBLISH</button>
+        <div id="vlog-list" class="space-y-2">
             </div>
-            <input id="title-input" type="text" placeholder="Title" class="editor-input text-6xl font-bold mb-10 placeholder-gray-800">
-            <textarea id="content-input" placeholder="Start your story..." class="editor-input text-2xl h-[60vh] resize-none leading-relaxed text-gray-300 placeholder-gray-800"></textarea>
+    </div>
+
+    <div id="reader-page" class="hidden fixed inset-0 bg-[#050505] z-[100] overflow-y-auto p-8">
+        <div class="max-w-2xl mx-auto">
+            <button onclick="closeReader()" class="text-gray-500 hover:text-white mb-10">← Back to Feed</button>
+            <h1 id="reader-title" class="text-5xl font-bold mb-8 text-white"></h1>
+            <div id="reader-content" class="text-xl leading-relaxed text-gray-300 whitespace-pre-wrap"></div>
+        </div>
+    </div>
+
+    <div id="editor-page" class="hidden fixed inset-0 bg-[#050505] z-[200] p-8">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex justify-between mb-12">
+                <button onclick="closeEditor()" class="text-gray-500">Cancel</button>
+                <button onclick="savePost()" class="bg-blue-600 px-8 py-2 rounded-full font-bold">Publish</button>
+            </div>
+            <input id="edit-title" type="text" placeholder="Title" class="w-full bg-transparent text-6xl font-bold outline-none mb-8 text-white">
+            <textarea id="edit-content" placeholder="Your story..." class="w-full bg-transparent text-xl h-[60vh] outline-none resize-none text-gray-300"></textarea>
+        </div>
+    </div>
+
+    <div id="custom-confirm" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
+        <div class="bg-[#111] border border-gray-800 p-8 rounded-2xl max-w-sm w-full text-center">
+            <h3 class="text-xl font-bold mb-4">Are you sure?</h3>
+            <p class="text-gray-400 mb-8">This action cannot be undone. Your vlog will be permanently removed.</p>
+            <div class="flex gap-4">
+                <button onclick="confirmDelete(false)" class="flex-1 py-3 rounded-xl bg-gray-800 font-bold">Cancel</button>
+                <button onclick="confirmDelete(true)" class="flex-1 py-3 rounded-xl bg-red-600 font-bold">Delete</button>
+            </div>
         </div>
     </div>
 
@@ -82,8 +69,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- 1. CONFIGURATION (APNAR FIREBASE THEKE PAWA DATA EKHANE BOSHANN) ---
-        const firebaseConfig = {
+        // CONFIG (Apnar Firebase keys ekhane thakbe)const firebaseConfig = {
             apiKey: "AIzaSyAaU0mkMQwTpsWtaNtwcPIZvO4RQCzHMTo",
             authDomain: "github-page-4a49d.firebaseapp.com",
             projectId: "github-page-4a49d",
@@ -91,115 +77,104 @@
             messagingSenderId: "359536976728",
             appId: "1:359536976728:web:12dd0ead0c702c5d8fbb2d"
         };
+        
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const blogCol = collection(db, "posts");
+        const colRef = collection(db, "vlogs");
+        let deleteId = null;
         let currentEditId = null;
 
-        // --- 2. FETCH DATA (Real-time) ---
-        const q = query(blogCol, orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('blog-feed');
-            feed.innerHTML = '';
-            
-            if (snapshot.empty) {
-                feed.innerHTML = '<p class="text-center text-gray-600 mt-20">No blogs yet. Be the first to write!</p>';
-            }
-
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                const id = doc.id;
-                feed.innerHTML += `
-                    <div class="glass-card p-8 mb-6 group flex justify-between items-start">
-                        <div class="flex-1 cursor-pointer" onclick="viewBlog(\`${data.title}\`, \`${data.content}\`)">
-                            <h2 class="text-3xl font-bold text-white mb-3 group-hover:text-blue-400 transition">${data.title}</h2>
-                            <p class="text-gray-400 text-lg leading-relaxed line-clamp-2">${data.content}</p>
-                        </div>
-                        <div class="ml-6 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="window.editPost('${id}', \`${data.title}\`, \`${data.content}\`)" class="text-blue-400 hover:underline">Edit</button>
-                            <button onclick="window.deletePost('${id}')" class="text-red-500 hover:underline">Delete</button>
+        // Fetch List
+        onSnapshot(query(colRef, orderBy("createdAt", "desc")), (snap) => {
+            const list = document.getElementById('vlog-list');
+            list.innerHTML = '';
+            snap.forEach(d => {
+                const data = d.data();
+                const id = d.id;
+                list.innerHTML += `
+                    <div class="vlog-link flex justify-between items-center py-6 px-4">
+                        <a href="#" onclick="openReader('${data.title}', \`${data.content.replace(/`/g, '\\`')}\`)" class="text-2xl font-semibold text-gray-200 hover:text-blue-400 flex-1">
+                            ${data.title}
+                        </a>
+                        <div class="flex gap-6 text-sm font-bold tracking-widest text-gray-600">
+                            <button onclick="editPost('${id}', '${data.title}', \`${data.content.replace(/`/g, '\\`')}\`)" class="hover:text-blue-500">EDIT</button>
+                            <button onclick="askDelete('${id}')" class="hover:text-red-500">DELETE</button>
                         </div>
                     </div>
                 `;
             });
         });
 
-        // --- 3. SAVE/PUBLISH LOGIC ---
-        window.publishBlog = async () => {
-            const title = document.getElementById('title-input').value;
-            const content = document.getElementById('content-input').value;
+        // Functions
+        window.savePost = async () => {
+            const title = document.getElementById('edit-title').value;
+            const content = document.getElementById('edit-content').value;
+            if(!title || !content) return;
 
-            if(!title || !content) return alert("Title and Content cannot be empty!");
-
-            try {
-                if(currentEditId) {
-                    await updateDoc(doc(db, "posts", currentEditId), { title, content });
-                } else {
-                    await addDoc(blogCol, { title, content, createdAt: new Date() });
-                }
-                closeEditor();
-            } catch (e) { alert("Error: " + e.message); }
-        };
-
-        // --- 4. DELETE LOGIC ---
-        window.deletePost = async (id) => {
-            if(confirm("Are you sure you want to delete this vlog?")) {
-                await deleteDoc(doc(db, "posts", id));
+            if(currentEditId) {
+                await updateDoc(doc(db, "vlogs", currentEditId), { title, content });
+            } else {
+                await addDoc(colRef, { title, content, createdAt: new Date() });
             }
+            closeEditor();
         };
 
-        // --- 5. UI CONTROLS ---
+        window.openReader = (title, content) => {
+            document.getElementById('reader-title').innerText = title;
+            document.getElementById('reader-content').innerText = content;
+            document.getElementById('reader-page').classList.remove('hidden');
+            window.history.pushState(null, null, "#reader");
+        };
+
+        window.closeReader = () => document.getElementById('reader-page').classList.add('hidden');
+
+        window.askDelete = (id) => {
+            deleteId = id;
+            document.getElementById('custom-confirm').style.display = 'flex';
+        };
+
+        window.confirmDelete = async (yes) => {
+            if(yes && deleteId) await deleteDoc(doc(db, "vlogs", deleteId));
+            document.getElementById('custom-confirm').style.display = 'none';
+            deleteId = null;
+        };
+
         window.openEditor = () => {
             currentEditId = null;
-            document.getElementById('title-input').value = '';
-            document.getElementById('content-input').value = '';
-            document.getElementById('editor-modal').style.display = 'block';
+            document.getElementById('edit-title').value = '';
+            document.getElementById('edit-content').value = '';
+            document.getElementById('editor-page').classList.remove('hidden');
         };
 
-        window.closeEditor = () => {
-            document.getElementById('editor-modal').style.display = 'none';
-        };
+        window.closeEditor = () => document.getElementById('editor-page').classList.add('hidden');
 
         window.editPost = (id, title, content) => {
             currentEditId = id;
-            document.getElementById('title-input').value = title;
-            document.getElementById('content-input').value = content;
-            document.getElementById('editor-modal').style.display = 'block';
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-content').value = content;
+            document.getElementById('editor-page').classList.remove('hidden');
         };
 
-        window.viewBlog = (title, content) => {
-            alert(`--- ${title} ---\n\n${content}`);
-        };
     </script>
 
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas-bg'), antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // Create a 3D Floating Knot
-        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const geometry = new THREE.IcosahedronGeometry(15, 1);
         const material = new THREE.MeshBasicMaterial({ color: 0x1d4ed8, wireframe: true });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-        
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
         camera.position.z = 30;
 
         function animate() {
             requestAnimationFrame(animate);
-            mesh.rotation.x += 0.001;
-            mesh.rotation.y += 0.002;
+            sphere.rotation.y += 0.003;
             renderer.render(scene, camera);
         }
-
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-        });
-
         animate();
     </script>
 </body>
