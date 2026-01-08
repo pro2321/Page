@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Nexus - My Personal Vlog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+        
+        body { margin: 0; background: #020617; color: white; overflow-x: hidden; font-family: 'Space Grotesk', sans-serif; }
+        #canvas-bg { position: fixed; top: 0; left: 0; z-index: -1; }
+        
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 20px; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .glass-card:hover { 
+            border-color: #3b82f6; 
+            transform: scale(1.02); 
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        /* Telegraph Style Editor */
+        #editor-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #020617;
+            z-index: 100;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        .editor-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            color: white;
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas-bg"></canvas>
+
+    <nav class="max-w-6xl mx-auto p-8 flex justify-between items-center relative z-10">
+        <h1 class="text-4xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
+            VLOG.IO
+        </h1>
+        <button onclick="openEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
+            + NEW BLOG
+        </button>
+    </nav>
+
+    <main class="max-w-4xl mx-auto p-6 relative z-10" id="blog-feed">
+        <div class="text-center text-gray-500 mt-20">Loading your stories...</div>
+    </main>
+
+    <div id="editor-modal">
+        <div class="max-w-3xl mx-auto mt-10">
+            <div class="flex justify-between items-center mb-16">
+                <button onclick="closeEditor()" class="text-gray-500 hover:text-white text-lg font-medium">✕ CANCEL</button>
+                <button onclick="publishBlog()" class="bg-blue-600 px-10 py-3 rounded-full font-bold hover:scale-105 transition-transform">PUBLISH</button>
+            </div>
+            <input id="title-input" type="text" placeholder="Title" class="editor-input text-6xl font-bold mb-10 placeholder-gray-800">
+            <textarea id="content-input" placeholder="Start your story..." class="editor-input text-2xl h-[60vh] resize-none leading-relaxed text-gray-300 placeholder-gray-800"></textarea>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- 1. CONFIGURATION (APNAR FIREBASE THEKE PAWA DATA EKHANE BOSHANN) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaU0mkMQwTpsWtaNtwcPIZvO4RQCzHMTo",
+            authDomain: "github-page-4a49d.firebaseapp.com",
+            projectId: "github-page-4a49d",
+            storageBucket: "github-page-4a49d.firebasestorage.app",
+            messagingSenderId: "359536976728",
+            appId: "1:359536976728:web:12dd0ead0c702c5d8fbb2d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const blogCol = collection(db, "posts");
+        let currentEditId = null;
+
+        // --- 2. FETCH DATA (Real-time) ---
+        const q = query(blogCol, orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('blog-feed');
+            feed.innerHTML = '';
+            
+            if (snapshot.empty) {
+                feed.innerHTML = '<p class="text-center text-gray-600 mt-20">No blogs yet. Be the first to write!</p>';
+            }
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const id = doc.id;
+                feed.innerHTML += `
+                    <div class="glass-card p-8 mb-6 group flex justify-between items-start">
+                        <div class="flex-1 cursor-pointer" onclick="viewBlog(\`${data.title}\`, \`${data.content}\`)">
+                            <h2 class="text-3xl font-bold text-white mb-3 group-hover:text-blue-400 transition">${data.title}</h2>
+                            <p class="text-gray-400 text-lg leading-relaxed line-clamp-2">${data.content}</p>
+                        </div>
+                        <div class="ml-6 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="window.editPost('${id}', \`${data.title}\`, \`${data.content}\`)" class="text-blue-400 hover:underline">Edit</button>
+                            <button onclick="window.deletePost('${id}')" class="text-red-500 hover:underline">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        // --- 3. SAVE/PUBLISH LOGIC ---
+        window.publishBlog = async () => {
+            const title = document.getElementById('title-input').value;
+            const content = document.getElementById('content-input').value;
+
+            if(!title || !content) return alert("Title and Content cannot be empty!");
+
+            try {
+                if(currentEditId) {
+                    await updateDoc(doc(db, "posts", currentEditId), { title, content });
+                } else {
+                    await addDoc(blogCol, { title, content, createdAt: new Date() });
+                }
+                closeEditor();
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        // --- 4. DELETE LOGIC ---
+        window.deletePost = async (id) => {
+            if(confirm("Are you sure you want to delete this vlog?")) {
+                await deleteDoc(doc(db, "posts", id));
+            }
+        };
+
+        // --- 5. UI CONTROLS ---
+        window.openEditor = () => {
+            currentEditId = null;
+            document.getElementById('title-input').value = '';
+            document.getElementById('content-input').value = '';
+            document.getElementById('editor-modal').style.display = 'block';
+        };
+
+        window.closeEditor = () => {
+            document.getElementById('editor-modal').style.display = 'none';
+        };
+
+        window.editPost = (id, title, content) => {
+            currentEditId = id;
+            document.getElementById('title-input').value = title;
+            document.getElementById('content-input').value = content;
+            document.getElementById('editor-modal').style.display = 'block';
+        };
+
+        window.viewBlog = (title, content) => {
+            alert(`--- ${title} ---\n\n${content}`);
+        };
+    </script>
+
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas-bg'), antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Create a 3D Floating Knot
+        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const material = new THREE.MeshBasicMaterial({ color: 0x1d4ed8, wireframe: true });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+        
+        camera.position.z = 30;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            mesh.rotation.x += 0.001;
+            mesh.rotation.y += 0.002;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        animate();
+    </script>
+</body>
+</html>
