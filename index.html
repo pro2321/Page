@@ -9,58 +9,53 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         body { margin: 0; background: #050505; color: #fff; font-family: 'Inter', sans-serif; overflow-x: hidden; }
-        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.6; }
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.4; }
         .vlog-link { transition: all 0.3s ease; border-bottom: 1px solid #1e293b; }
         .vlog-link:hover { background: rgba(255,255,255,0.03); border-color: #3b82f6; }
-        
-        /* Smooth Custom Confirm Modal */
-        #custom-confirm {
-            display: none;
-            backdrop-filter: blur(20px);
-            background: rgba(0,0,0,0.8);
-        }
+        #custom-confirm { display: none; backdrop-filter: blur(20px); background: rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
 
     <canvas id="bg-canvas"></canvas>
 
-    <div id="home-page" class="max-w-4xl mx-auto min-h-screen p-8">
+    <div id="home-page" class="max-w-4xl mx-auto min-h-screen p-8 relative z-10">
         <header class="flex justify-between items-center py-12">
-            <h1 class="text-3xl font-extrabold tracking-tighter text-blue-500 uppercase">Nexus Feed</h1>
-            <button onclick="openEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold transition">+ New</button>
+            <h1 class="text-4xl font-black tracking-tighter text-blue-500 italic">NEXUS.</h1>
+            <button onclick="handleOpenEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition shadow-lg shadow-blue-500/20">+ New</button>
         </header>
 
-        <div id="vlog-list" class="space-y-2">
-            </div>
-    </div>
-
-    <div id="reader-page" class="hidden fixed inset-0 bg-[#050505] z-[100] overflow-y-auto p-8">
-        <div class="max-w-2xl mx-auto">
-            <button onclick="closeReader()" class="text-gray-500 hover:text-white mb-10">← Back to Feed</button>
-            <h1 id="reader-title" class="text-5xl font-bold mb-8 text-white"></h1>
-            <div id="reader-content" class="text-xl leading-relaxed text-gray-300 whitespace-pre-wrap"></div>
+        <div id="vlog-list" class="space-y-1">
+            <p class="text-gray-600">Syncing with database...</p>
         </div>
     </div>
 
-    <div id="editor-page" class="hidden fixed inset-0 bg-[#050505] z-[200] p-8">
+    <div id="reader-page" class="hidden fixed inset-0 bg-[#050505] z-[100] overflow-y-auto p-12">
+        <div class="max-w-2xl mx-auto">
+            <button onclick="handleCloseReader()" class="text-gray-500 hover:text-white mb-10 uppercase tracking-widest text-xs font-bold">← Close</button>
+            <h1 id="reader-title" class="text-5xl font-extrabold mb-8 text-white leading-tight"></h1>
+            <div id="reader-content" class="text-xl leading-relaxed text-gray-400 whitespace-pre-wrap"></div>
+        </div>
+    </div>
+
+    <div id="editor-page" class="hidden fixed inset-0 bg-[#050505] z-[200] p-12">
         <div class="max-w-3xl mx-auto">
-            <div class="flex justify-between mb-12">
-                <button onclick="closeEditor()" class="text-gray-500">Cancel</button>
-                <button onclick="savePost()" class="bg-blue-600 px-8 py-2 rounded-full font-bold">Publish</button>
+            <div class="flex justify-between mb-16">
+                <button onclick="handleCloseEditor()" class="text-gray-500 font-bold uppercase tracking-widest text-xs">Cancel</button>
+                <button onclick="handleSavePost()" class="bg-blue-600 px-10 py-2 rounded-full font-bold hover:scale-105 transition">Publish</button>
             </div>
-            <input id="edit-title" type="text" placeholder="Title" class="w-full bg-transparent text-6xl font-bold outline-none mb-8 text-white">
-            <textarea id="edit-content" placeholder="Your story..." class="w-full bg-transparent text-xl h-[60vh] outline-none resize-none text-gray-300"></textarea>
+            <input id="edit-title" type="text" placeholder="Title" class="w-full bg-transparent text-6xl font-bold outline-none mb-10 text-white border-l-4 border-blue-600 pl-6">
+            <textarea id="edit-content" placeholder="Tell your story..." class="w-full bg-transparent text-2xl h-[50vh] outline-none resize-none text-gray-400 leading-relaxed"></textarea>
         </div>
     </div>
 
     <div id="custom-confirm" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
-        <div class="bg-[#111] border border-gray-800 p-8 rounded-2xl max-w-sm w-full text-center">
-            <h3 class="text-xl font-bold mb-4">Are you sure?</h3>
-            <p class="text-gray-400 mb-8">This action cannot be undone. Your vlog will be permanently removed.</p>
+        <div class="bg-[#111] border border-gray-800 p-10 rounded-3xl max-w-sm w-full text-center">
+            <h3 class="text-2xl font-bold mb-4">Delete Post?</h3>
+            <p class="text-gray-500 mb-10">This will remove the entry forever from Nexus servers.</p>
             <div class="flex gap-4">
-                <button onclick="confirmDelete(false)" class="flex-1 py-3 rounded-xl bg-gray-800 font-bold">Cancel</button>
-                <button onclick="confirmDelete(true)" class="flex-1 py-3 rounded-xl bg-red-600 font-bold">Delete</button>
+                <button onclick="handleConfirmDelete(false)" class="flex-1 py-4 rounded-2xl bg-gray-900 font-bold text-gray-400">Back</button>
+                <button onclick="handleConfirmDelete(true)" class="flex-1 py-4 rounded-2xl bg-red-600 font-bold">Delete</button>
             </div>
         </div>
     </div>
@@ -69,7 +64,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // CONFIG (Apnar Firebase keys ekhane thakbe)const firebaseConfig = {
+        // --- PASTE YOUR CONFIG HERE ---
+        
+        const firebaseConfig = {
             apiKey: "AIzaSyAaU0mkMQwTpsWtaNtwcPIZvO4RQCzHMTo",
             authDomain: "github-page-4a49d.firebaseapp.com",
             projectId: "github-page-4a49d",
@@ -77,7 +74,6 @@
             messagingSenderId: "359536976728",
             appId: "1:359536976728:web:12dd0ead0c702c5d8fbb2d"
         };
-        
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -85,97 +81,94 @@
         let deleteId = null;
         let currentEditId = null;
 
-        // Fetch List
+        // Fetch Data
         onSnapshot(query(colRef, orderBy("createdAt", "desc")), (snap) => {
             const list = document.getElementById('vlog-list');
             list.innerHTML = '';
+            if(snap.empty) list.innerHTML = '<p class="text-gray-700 mt-10">Empty feed. Create something.</p>';
             snap.forEach(d => {
                 const data = d.data();
                 const id = d.id;
                 list.innerHTML += `
-                    <div class="vlog-link flex justify-between items-center py-6 px-4">
-                        <a href="#" onclick="openReader('${data.title}', \`${data.content.replace(/`/g, '\\`')}\`)" class="text-2xl font-semibold text-gray-200 hover:text-blue-400 flex-1">
+                    <div class="vlog-link flex justify-between items-center py-8">
+                        <a href="javascript:void(0)" onclick="handleOpenReader('${data.title.replace(/'/g, "\\'")}', \`${data.content.replace(/`/g, '\\`')}\`)" class="text-2xl font-bold text-gray-200 hover:text-blue-500 transition-colors flex-1">
                             ${data.title}
                         </a>
-                        <div class="flex gap-6 text-sm font-bold tracking-widest text-gray-600">
-                            <button onclick="editPost('${id}', '${data.title}', \`${data.content.replace(/`/g, '\\`')}\`)" class="hover:text-blue-500">EDIT</button>
-                            <button onclick="askDelete('${id}')" class="hover:text-red-500">DELETE</button>
+                        <div class="flex gap-8 text-[10px] font-black tracking-[0.2em] text-gray-700">
+                            <button onclick="handleEditPost('${id}', '${data.title.replace(/'/g, "\\'")}', \`${data.content.replace(/`/g, '\\`')}\`)" class="hover:text-blue-500">EDIT</button>
+                            <button onclick="handleAskDelete('${id}')" class="hover:text-red-600">DELETE</button>
                         </div>
                     </div>
                 `;
             });
         });
 
-        // Functions
-        window.savePost = async () => {
+        // Functions mapped to window for HTML access
+        window.handleSavePost = async () => {
             const title = document.getElementById('edit-title').value;
             const content = document.getElementById('edit-content').value;
-            if(!title || !content) return;
+            if(!title || !content) return alert("Fill all fields");
 
             if(currentEditId) {
                 await updateDoc(doc(db, "vlogs", currentEditId), { title, content });
             } else {
                 await addDoc(colRef, { title, content, createdAt: new Date() });
             }
-            closeEditor();
+            window.handleCloseEditor();
         };
 
-        window.openReader = (title, content) => {
-            document.getElementById('reader-title').innerText = title;
-            document.getElementById('reader-content').innerText = content;
-            document.getElementById('reader-page').classList.remove('hidden');
-            window.history.pushState(null, null, "#reader");
-        };
-
-        window.closeReader = () => document.getElementById('reader-page').classList.add('hidden');
-
-        window.askDelete = (id) => {
-            deleteId = id;
-            document.getElementById('custom-confirm').style.display = 'flex';
-        };
-
-        window.confirmDelete = async (yes) => {
+        window.handleConfirmDelete = async (yes) => {
             if(yes && deleteId) await deleteDoc(doc(db, "vlogs", deleteId));
             document.getElementById('custom-confirm').style.display = 'none';
             deleteId = null;
         };
 
-        window.openEditor = () => {
+        window.handleAskDelete = (id) => {
+            deleteId = id;
+            document.getElementById('custom-confirm').style.display = 'flex';
+        };
+
+        window.handleOpenEditor = () => {
             currentEditId = null;
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-content').value = '';
             document.getElementById('editor-page').classList.remove('hidden');
         };
 
-        window.closeEditor = () => document.getElementById('editor-page').classList.add('hidden');
-
-        window.editPost = (id, title, content) => {
+        window.handleEditPost = (id, title, content) => {
             currentEditId = id;
             document.getElementById('edit-title').value = title;
             document.getElementById('edit-content').value = content;
             document.getElementById('editor-page').classList.remove('hidden');
         };
 
+        window.handleCloseEditor = () => document.getElementById('editor-page').classList.add('hidden');
+        window.handleOpenReader = (title, content) => {
+            document.getElementById('reader-title').innerText = title;
+            document.getElementById('reader-content').innerText = content;
+            document.getElementById('reader-page').classList.remove('hidden');
+        };
+        window.handleCloseReader = () => document.getElementById('reader-page').classList.add('hidden');
     </script>
 
     <script>
+        // Three.js Background
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-
-        const geometry = new THREE.IcosahedronGeometry(15, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0x1d4ed8, wireframe: true });
-        const sphere = new THREE.Mesh(geometry, material);
-        scene.add(sphere);
-        camera.position.z = 30;
-
+        const geometry = new THREE.TorusGeometry(12, 0.1, 16, 100);
+        const material = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+        const torus = new THREE.Mesh(geometry, material);
+        scene.add(torus);
+        camera.position.z = 20;
         function animate() {
             requestAnimationFrame(animate);
-            sphere.rotation.y += 0.003;
+            torus.rotation.x += 0.01;
+            torus.rotation.y += 0.005;
             renderer.render(scene, camera);
         }
         animate();
     </script>
 </body>
-</html>
+    </html>
